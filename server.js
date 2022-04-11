@@ -1,31 +1,77 @@
-var express = require("express"); 
-var app = express();
+var ibmdb = require("ibm_db")
+    , pool = new ibmdb.Pool()
+    , app = require('express')()
+    , cn = "hostname=21fecfd8-47b7-4937-840d-d791d0218660.bs2io90l08kqb1od8lcg.databases.appdomain.cloud;port=31864;database=bludb;uid=lfy91792;pwd=CuWJnUt5DsXZnWjo;security=ssl"
+    , requestNo = 0
+    , img1 = "data/pushpa.jpg"
+    , img2 = "data/panda.jpg"
+    ;
 
-// Set the Server Port
-var PORT  = process.env.PORT || 3000
+//ibmdb.debug(true);
+pool.init(5, cn);
+function getConnection() {
+    var conn;
+    pool.open(cn, function(err, connection) {
+        if(err) return console.log(err);
+        conn = connection;
+        });
+    return conn;
+}
+pool.open(cn, function(err, conn) {
+    if(err) {
+        console.log(err);
+        exit(1);
+    }
 
-var server = app.listen(PORT, function() {
-  var host = server.address().address;
-  var port = server.address().port;
-  console.log('Listening at http://%s:%s', 'localhost', port);
+    try{
+        conn.querySync("drop table imgtab");
+    } catch (e) {};
+    try{
+        conn.querySync("create table imgtab (id int, filename varchar(50), image BLOB(200K))");
+    } catch (e) {};
+    
+    conn.prepare("insert into imgtab (id, filename, image) values(?, ? , ?)", function(err, stmt){
+        if(err) return console.log(err);
+        stmt.execute([1, 'img1.jpg', {ParamType:"FILE", DataType:"BLOB", Data:img1}], 
+            function(err, result){
+              if(err) return console.log(err);
+              console.log("image 1 inserted.");
+            stmt.execute([2, 'img2.jpg', {ParamType:"FILE", DataType:"BLOB", Data:img2}], 
+            function(err, result){
+              if(err) return console.log(err);
+              else {result.closeSync();
+              console.log("image 2 inserted.");}
+              conn.close(function(){console.log("done.");});
+              console.log("App is running on localhost:3000 ");
+            });
+        });
+    });
 });
 
+app.listen(3000);
 
-//GET STATUS ENDPOINT
-app.get('/', function (req, res) {
-  res.send('Our Server is Up and Running!')
+app.get('/', function(req, res) {
+    res.sendFile('index.html', {root: __dirname });
+});
+
+app.get('/:id', function(req, res) {
+  var imgid = req.params.id;
+  var no = ++requestNo;
+  console.log("Received id = " + imgid + " for request no "+no);
+  if(imgid != parseInt(imgid)) return console.log("id is not int.");
+  var conn = getConnection();
+  if(typeof(conn) !== 'object') { console.log("Invalid connection..");res.send(conn); res.end(); }
+  else
+  conn.query("SELECT id, filename, image FROM imgtab WHERE id=?", [imgid], function(err, rows) {
+    if(err){
+      return console.log(err);
+    } else {
+      res.set('Content-Type', 'image/jpeg');
+      res.send(new Buffer(rows[0].IMAGE, 'binary'));
+      res.end();
+      console.log("File "+ rows[0].FILENAME + " sent for request no = "+no+", id = "+ imgid);
+      conn.close(function(){console.log("Done for request ", no);});
+    }
+  });
 })
 
-//GET Date ENDPOINT
-app.get('/date', function (req, res) {
-  var utcDate = new Date()
-
-  var day = utcDate.getDate()
-  var month = utcDate.getMonth()+1
-  var year = utcDate.getFullYear()
-
-  //Date in month-day-year format
-  var todaysDate = `${month}-${day}-${year}`
-
-  res.send(todaysDate)
-})
