@@ -1,7 +1,7 @@
 var ibmdb = require("ibm_db")
     , pool = new ibmdb.Pool()
     , app = require('express')()
-    , cn = "hostname=21fecfd8-47b7-4937-840d-d791d0218660.bs2io90l08kqb1od8lcg.databases.appdomain.cloud;port=31864;database=bludb;uid=lfy91792;pwd=CuWJnUt5DsXZnWjo;security=ssl"
+    , cn = "hostname=764264db-9824-4b7c-82df-40d1b13897c2.bs2io90l08kqb1od8lcg.databases.appdomain.cloud;port=32536;database=bludb;uid=gsb79674;pwd=Jg3BN9KXTM6e0OCS;security=ssl"
     , requestNo = 0
     , img1 = "data/pushpa.jpg"
     , img2 = "data/panda.jpg"
